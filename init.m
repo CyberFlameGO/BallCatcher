@@ -41,9 +41,10 @@ allLocations = [];
 allLocations3D = [];
 detectedImages = [];
 
-%timing params
-firstpause = 0.3;
-secondpause = 0.2;
+%launcher params
+launchMotor = MOTOR_C;
+launchpwr = 100;
+launchTime = 0.5;
 
 %flight params
 hitGround = false;
@@ -51,20 +52,22 @@ t_blindest = 0.7;
 x_blindest = 700;
 h_start = 120;
 h_end = 120;
+defaultLandingPt = 700; %mm
+x_est = defaultLandingPt;
 
 %prepNXT
 h = PrepNXT(2);
 COM_SetDefaultNXT(h);
 OpenUltrasonic(0);
 
-%prep cart motor
-cart = NXTMotor('A');
-cart.SmoothStart = true;
-cart.ActionAtTachoLimit = 'HoldBrake';
-
 %cart params
-pos = 0;
-deg2Dist = 10; %mm/deg
-Kp = 1;
-Ki = 1;
-Kd = 1;
+cartMotor = MOTOR_A;
+cartpwrMax = 100;
+deg2mm = (36/12)*(20/12)*58*pi/360; %mm/deg = gearRat1*geatRat2*D*pi*(1 rev / 360 deg)
+mm2deg = 1/deg2mm;
+tol = 10; %mm
+tolDeg = tol*mm2deg;
+Kp = 2;
+basketOffset = 130; %mm
+
+

@@ -8,18 +8,22 @@ preview(cam);
 pause(1);
 closepreview(cam);
 
+%get startpoint of cart
+GetUltrasonic(0); %throw out first one
+pause(0.1);
+startPt = 10*GetUltrasonic(0);
+setPtRel = defaultLandingPt - startPt - basketOffset;
+setPtRelDeg = setPtRel * mm2deg;
+err = Inf;
+
 %launch ball
-motor = NXTMotor('C');
-motor.Power = 100;
-motor.TachoLimit = 150;
-motor.SendToNXT();
+launcherRunning = 1;
+DirectMotorCommand(launchMotor,launchpwr,0,'on','off',0,'off');
+tstart = tic;
+pause(0.35) %pause to let it start moving
 
 
 %% Run capture loop
-
-%pause to let ball start moving
-pause(firstpause)
-tstart = tic;
 
 %could look into parallelizing this
 % Task 1 - Camera image aquisition
@@ -27,7 +31,9 @@ tstart = tic;
 % Task 3 - Ball tracking/ kalman filter
 % Task 4 - Realtime cart control
 
-while runLoop && frameCount < 20 && ~hitGround 
+
+
+while runLoop && frameCount < 30 && ~hitGround 
     
     %Get the next frame
     frame = getsnapshot(cam);    
@@ -52,7 +58,7 @@ while runLoop && frameCount < 20 && ~hitGround
         [~,idx] = max(allLocations3D(:,3));
         pastMax = idx<size(allLocations3D,1);
         goingUp = Location3D(2)>allLocations3D(end,3);
-        if pastMax && goingUp
+        if pastMax && goingUp && (toc(tstart) > 0.6)
             hitGround = true;
         end
     end
@@ -100,30 +106,49 @@ while runLoop && frameCount < 20 && ~hitGround
             x_end(count) = polyval(Cx{count},t_end(count));
             count = count + 1; 
             
-            %get current landing estimages
-            t_est = t_end(end);
+            %get current landing estimates
             x_est = x_end(end);
         else
             
             %get current landing estimates even if ball isn't seen
             if exist('x_end','var')
-                t_est = t_end(end);
                 x_est = x_end(end);
             else
-                t_est = t_blindest;
-                x_est = x_blindest;
+                x_est = defaultLandingPt;
             end
         end              
     end  
     
-    %take readings from sensors
-    posUS = 10*GetUltrasonic(0); %dist in mm
-    motorData = cart.ReadFromNXT;
-    wheelAngle = motorData.Position; %angle in degrees
-    posEn = wheelAngle * deg2dist; %dist in mm
+    %make sure x is a real value we can reach
+    if ~isreal(x_est) || (x_est < 0)
+        x_est = defaultLandingPt;
+    end
     
-    %do motor control
-            
+    %recompute setpoint
+    setPtRel = x_est - startPt - basketOffset;
+    setPtRelDeg = setPtRel * mm2deg;
+    
+    %get cart position and find error
+    data = NXT_GetOutputState(cartMotor);
+    err = setPtRelDeg - data.TachoCount; %deg
+    
+    %compute power and limit it
+    pwr_cal = abs(Kp*err);
+    cartpwr = min([pwr_cal,cartpwrMax]); %cap max pwr
+    cartpwr = max([cartpwr,2]); %cap min pwr    
+    
+    %figure out if we have made it and need to stop
+    if abs(err) < tolDeg
+        StopMotor(cartMotor,'brake');
+    else    
+        DirectMotorCommand(cartMotor,sign(err)*cartpwr,0,'on','off',0,'off')
+    end
+    
+    %turn off launcher
+    if launcherRunning && toc(tstart) > launchTime
+        StopMotor(launchMotor,'brake');
+        launcherRunning = 0;
+    end          
     
 end 
 
@@ -131,11 +156,11 @@ end
 %% Post Processing
 
 %display fps
-pause(secondpause);
 tend = toc(tstart);
-fprintf('Avg FPS: %i\n',round(frameCount/(tend-(firstpause+secondpause))));
+fprintf('Avg FPS: %i\n',round(frameCount/tend));
 
 %Clean up camera stuff and stop NXT
+StopMotor(cartMotor,'off');
 CleanUp;
 
 %build overview image
