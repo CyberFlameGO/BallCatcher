@@ -44,7 +44,7 @@ detectedImages = [];
 %launcher params
 launchMotor = MOTOR_C;
 launchpwr = 100;
-launchTime = 0.5;
+launchTime = 0.4;
 
 %flight params
 hitGround = false;

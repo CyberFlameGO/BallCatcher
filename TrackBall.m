@@ -4,9 +4,9 @@
 init;
 
 % get a quick preview of the image
-preview(cam);
-pause(1);
-closepreview(cam);
+% preview(cam);
+% pause(1);
+% closepreview(cam);
 
 %get startpoint of cart
 GetUltrasonic(0); %throw out first one
