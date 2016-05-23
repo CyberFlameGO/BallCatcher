@@ -3,11 +3,6 @@
 %run initialization
 init;
 
-% get a quick preview of the image
-% preview(cam);
-% pause(1);
-% closepreview(cam);
-
 %get startpoint of cart
 GetUltrasonic(0); %throw out first one
 pause(0.1);
@@ -20,18 +15,10 @@ err = Inf;
 launcherRunning = 1;
 DirectMotorCommand(launchMotor,launchpwr,0,'on','off',0,'off');
 tstart = tic;
-pause(0.35) %pause to let it start moving
+pause(0.25) %pause to let it start moving
 
 
 %% Run capture loop
-
-%could look into parallelizing this
-% Task 1 - Camera image aquisition
-% Task 2 - Image processing/filtering
-% Task 3 - Ball tracking/ kalman filter
-% Task 4 - Realtime cart control
-
-
 
 while runLoop && frameCount < 30 && ~hitGround 
     
